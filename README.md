@@ -190,3 +190,5 @@ Background Thread runs:
 - ✅ `DRIVER_ARRIVED` added to `DRIVER_TRANSITIONS` map
 - ✅ `@Transactional` added to all dual-save service methods
 - ✅ `LifecycleStatus` enum order numbers made consecutive (0–11)
+
+Note: This Project Codes are taken by Claude Ai.But i understand concept of this project.
