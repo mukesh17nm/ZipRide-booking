@@ -143,3 +143,50 @@ CREATE DATABASE taxi_db;
 ### Passengers
 - `POST /api/fare/passengers`
 - `GET  /api/fare/passengers`
+
+---
+
+## ⚡ Automatic Pipeline (New Feature)
+
+### What Changed
+The manual pipeline required **11 separate API calls** (one per stage).
+The new automatic pipeline needs only **1 API call** — the rest runs in the background automatically.
+
+### How It Works
+
+```
+POST /api/pipeline/auto/book   ← You call this ONCE
+         ↓ (returns immediately with rideId)
+Background Thread runs:
+  REGISTERED → LOGGED_IN (instant)
+  → RIDE_REQUESTED (instant)
+  → DRIVER_ASSIGNED (after 4 seconds — finds nearest driver)
+  → RIDE_STARTED    (after 5 seconds — driver arrived)
+  → RIDE_COMPLETED  (after 6 seconds — trip done)
+  → PAYMENT_DONE    (after 3 seconds — payment processed)
+  → RATED           (after 2 seconds — rating submitted ✅)
+```
+
+### New Files Added
+| File | Purpose |
+|------|---------|
+| `service/AutoPipelineService.java` | Core automatic pipeline engine |
+| `controller/AutoPipelineController.java` | REST endpoints for auto pipeline |
+| `dto/AutoBookingRequest.java` | Request body for auto booking |
+| `dto/AutoBookingResult.java` | Immediate response after booking |
+| `components/AutoPipelinePanel.jsx` | Live visual progress UI |
+
+### New API Endpoints
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | `/api/pipeline/auto/book` | Book ride → full pipeline auto-runs |
+| GET  | `/api/pipeline/auto/status/{rideId}` | Poll current stage (call every 3s) |
+| GET  | `/api/pipeline/auto/history/{rideId}` | Full audit trail |
+| GET  | `/api/pipeline/auto/all` | Admin: all records |
+| GET  | `/api/pipeline/auto/analytics` | Admin: stage counts |
+
+### Bug Fixes Also Included
+- ✅ `PipelineRecord` now has a dedicated `driverId` column
+- ✅ `DRIVER_ARRIVED` added to `DRIVER_TRANSITIONS` map
+- ✅ `@Transactional` added to all dual-save service methods
+- ✅ `LifecycleStatus` enum order numbers made consecutive (0–11)

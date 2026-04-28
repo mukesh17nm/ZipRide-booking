@@ -1,0 +1,275 @@
+{
+  "info": {
+    "name": "ZipRide — Lifecycle Pipeline API",
+    "_postman_id": "zipride-pipeline-2024",
+    "description": "Complete Passenger + Driver Lifecycle Pipeline demonstration.\n\nOrder of execution:\n1. Auth — signup & login\n2. Passenger Pipeline — 7 steps\n3. Driver Pipeline — 6 steps\n4. Admin queries — analytics\n\nSet {{base_url}} = http://localhost:8080\nSet {{token}} from login response",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "token",    "value": "paste_jwt_token_here" },
+    { "key": "ride_id",  "value": "1" },
+    { "key": "pass_id",  "value": "1" },
+    { "key": "driver_id","value": "1" }
+  ],
+  "item": [
+
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Signup — Passenger",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/signup", "host": ["{{base_url}}"], "path": ["api","auth","signup"] },
+            "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Arjun Sharma\",\n  \"email\": \"arjun@zipride.com\",\n  \"password\": \"pass123\",\n  \"phoneNumber\": \"+91 9876543210\",\n  \"role\": \"PASSENGER\"\n}" }
+          }
+        },
+        {
+          "name": "Signup — Driver",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/signup", "host": ["{{base_url}}"], "path": ["api","auth","signup"] },
+            "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Ravi Kumar\",\n  \"email\": \"ravi@zipride.com\",\n  \"password\": \"pass123\",\n  \"phoneNumber\": \"+91 9876543211\",\n  \"role\": \"DRIVER\"\n}" }
+          }
+        },
+        {
+          "name": "Login — Admin",
+          "event": [
+            { "listen": "test", "script": { "exec": ["var data = pm.response.json();", "if (data.token) pm.collectionVariables.set('token', data.token);", "if (data.userId) pm.collectionVariables.set('pass_id', data.userId);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"arjun@zipride.com\",\n  \"password\": \"pass123\"\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "1. Create a Ride (Pre-requisite)",
+      "item": [
+        {
+          "name": "Register Driver (Admin)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["var d = pm.response.json(); if (d.id) pm.collectionVariables.set('driver_id', d.id);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/drivers", "host": ["{{base_url}}"], "path": ["api","drivers"] },
+            "body": { "mode": "raw", "raw": "{\n  \"driverName\": \"Ravi Kumar\",\n  \"contactNumber\": \"+91 9876543211\",\n  \"vehicleType\": \"SEDAN\",\n  \"vehicleNumber\": \"TN01AB1234\",\n  \"status\": \"AVAILABLE\",\n  \"latitude\": 11.9430,\n  \"longitude\": 79.8100,\n  \"zone\": \"ZONE_A\"\n}" }
+          }
+        },
+        {
+          "name": "Book a Ride (creates ride_id)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["var d = pm.response.json(); if (d.id) pm.collectionVariables.set('ride_id', d.id);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/fare/rides", "host": ["{{base_url}}"], "path": ["api","fare","rides"] },
+            "body": { "mode": "raw", "raw": "{\n  \"passengerId\": {{pass_id}},\n  \"passengerName\": \"Arjun Sharma\",\n  \"pickupLat\": 11.9344,\n  \"pickupLng\": 79.8361,\n  \"pickupName\": \"White Town, Puducherry\",\n  \"dropLat\": 12.0059,\n  \"dropLng\": 79.8105,\n  \"dropName\": \"Auroville\",\n  \"zone\": \"ZONE_A\",\n  \"vehicleType\": \"SEDAN\",\n  \"status\": \"PENDING\",\n  \"requestTime\": \"2025-01-01T10:00:00\",\n  \"estimatedFare\": 245.50\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "2. PASSENGER Pipeline (7 steps)",
+      "item": [
+        {
+          "name": "Step 1 — loginPassenger (REGISTERED → LOGGED_IN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/login", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"passengerId\": {{pass_id}}\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status LOGGED_IN', function() { pm.expect(pm.response.json().currentStatus).to.eql('LOGGED_IN'); });"] } }]
+        },
+        {
+          "name": "Step 2 — requestRide (LOGGED_IN → RIDE_REQUESTED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/request-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","request-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"passengerId\": {{pass_id}},\n  \"rideId\": {{ride_id}}\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status RIDE_REQUESTED', function() { pm.expect(pm.response.json().currentStatus).to.eql('RIDE_REQUESTED'); });"] } }]
+        },
+        {
+          "name": "Step 3 — assignDriver (RIDE_REQUESTED → DRIVER_ASSIGNED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/assign-driver", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","assign-driver"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}},\n  \"driverId\": {{driver_id}}\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status DRIVER_ASSIGNED', function() { pm.expect(pm.response.json().currentStatus).to.eql('DRIVER_ASSIGNED'); });"] } }]
+        },
+        {
+          "name": "Step 4 — startRide (DRIVER_ASSIGNED → RIDE_STARTED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/start-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","start-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}},\n  \"driverId\": {{driver_id}}\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status RIDE_STARTED', function() { pm.expect(pm.response.json().currentStatus).to.eql('RIDE_STARTED'); });"] } }]
+        },
+        {
+          "name": "Step 5 — completeRide (RIDE_STARTED → RIDE_COMPLETED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/complete-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","complete-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}}\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status RIDE_COMPLETED', function() { pm.expect(pm.response.json().currentStatus).to.eql('RIDE_COMPLETED'); });"] } }]
+        },
+        {
+          "name": "Step 6 — makePayment (RIDE_COMPLETED → PAYMENT_DONE)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/payment", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","payment"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}},\n  \"passengerId\": {{pass_id}},\n  \"paymentAmount\": 245.50\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status PAYMENT_DONE', function() { pm.expect(pm.response.json().currentStatus).to.eql('PAYMENT_DONE'); });"] } }]
+        },
+        {
+          "name": "Step 7 — giveRating (PAYMENT_DONE → RATED) ✅ PIPELINE COMPLETE",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/rate", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","rate"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}},\n  \"passengerId\": {{pass_id}},\n  \"ratingScore\": 4.5\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status RATED — pipeline complete', function() { pm.expect(pm.response.json().currentStatus).to.eql('RATED'); pm.expect(pm.response.json().nextAllowedStep).to.eql('PIPELINE_COMPLETE'); });"] } }]
+        },
+        {
+          "name": "❌ INVALID — Try to startRide before assignDriver (should fail)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/start-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","start-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": 999,\n  \"driverId\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Should return 422 or 400 for invalid transition', function() { pm.expect(pm.response.code).to.be.oneOf([400, 404, 422]); });"] } }]
+        }
+      ]
+    },
+
+    {
+      "name": "3. DRIVER Pipeline (6 steps)",
+      "item": [
+        {
+          "name": "Step 1 — driverGoOnline (→ DRIVER_ONLINE)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/driver/go-online", "host": ["{{base_url}}"], "path": ["api","pipeline","driver","go-online"] },
+            "body": { "mode": "raw", "raw": "{\n  \"driverId\": {{driver_id}}\n}" }
+          }
+        },
+        {
+          "name": "Step 2 — driverAcceptRide (DRIVER_ONLINE → DRIVER_ACCEPTED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/driver/accept-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","driver","accept-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"driverId\": {{driver_id}},\n  \"rideId\": {{ride_id}}\n}" }
+          }
+        },
+        {
+          "name": "Step 3 — driverArrivedAtPickup (DRIVER_ACCEPTED → DRIVER_ARRIVED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/driver/arrived", "host": ["{{base_url}}"], "path": ["api","pipeline","driver","arrived"] },
+            "body": { "mode": "raw", "raw": "{\n  \"driverId\": {{driver_id}},\n  \"rideId\": {{ride_id}}\n}" }
+          }
+        },
+        {
+          "name": "Step 4 — startRide (DRIVER_ARRIVED → RIDE_STARTED) [shared with passenger]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/start-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","start-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}},\n  \"driverId\": {{driver_id}}\n}" }
+          }
+        },
+        {
+          "name": "Step 5 — completeRide (RIDE_STARTED → RIDE_COMPLETED) [shared]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/complete-ride", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","complete-ride"] },
+            "body": { "mode": "raw", "raw": "{\n  \"rideId\": {{ride_id}}\n}" }
+          }
+        },
+        {
+          "name": "Step 6 — driverFinishTrip (RIDE_COMPLETED → DRIVER_TRIP_FINISHED) ✅ DRIVER DONE",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/driver/finish-trip", "host": ["{{base_url}}"], "path": ["api","pipeline","driver","finish-trip"] },
+            "body": { "mode": "raw", "raw": "{\n  \"driverId\": {{driver_id}},\n  \"rideId\": {{ride_id}}\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "4. Admin — Query & Analytics",
+      "item": [
+        {
+          "name": "Get Ride Pipeline History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/ride/{{ride_id}}", "host": ["{{base_url}}"], "path": ["api","pipeline","ride","{{ride_id}}"] }
+          }
+        },
+        {
+          "name": "Get Current Ride Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/ride/{{ride_id}}/status", "host": ["{{base_url}}"], "path": ["api","pipeline","ride","{{ride_id}}","status"] }
+          }
+        },
+        {
+          "name": "Get Passenger Pipeline History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/passenger/{{pass_id}}", "host": ["{{base_url}}"], "path": ["api","pipeline","passenger","{{pass_id}}"] }
+          }
+        },
+        {
+          "name": "Get All Pipeline Records (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/all", "host": ["{{base_url}}"], "path": ["api","pipeline","all"] }
+          }
+        },
+        {
+          "name": "Get Pipeline Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/pipeline/analytics", "host": ["{{base_url}}"], "path": ["api","pipeline","analytics"] }
+          }
+        }
+      ]
+    }
+  ]
+}

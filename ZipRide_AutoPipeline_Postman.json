@@ -1,0 +1,138 @@
+{
+  "info": {
+    "name": "ZipRide — Auto Pipeline + Admin Monitor",
+    "description": "Automatic pipeline with admin search by Ride ID and Driver ID",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AUTH",
+      "item": [
+        {
+          "name": "1. Login as Admin",
+          "request": { "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": {"raw": "http://localhost:8080/api/auth/login"},
+            "body": {"mode":"raw","raw":"{\"email\":\"admin@zipride.com\",\"password\":\"admin123\"}"}
+          }
+        },
+        {
+          "name": "2. Login as Passenger",
+          "request": { "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": {"raw": "http://localhost:8080/api/auth/login"},
+            "body": {"mode":"raw","raw":"{\"email\":\"passenger@zipride.com\",\"password\":\"pass123\"}"}
+          }
+        },
+        {
+          "name": "3. Login as Driver",
+          "request": { "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": {"raw": "http://localhost:8080/api/auth/login"},
+            "body": {"mode":"raw","raw":"{\"email\":\"driver1@zipride.com\",\"password\":\"driver123\"}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "AUTO PIPELINE",
+      "item": [
+        {
+          "name": "4. Auto Book Ride (PASSENGER)",
+          "request": { "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{passengerToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/book"},
+            "body": {"mode":"raw","raw":"{\n  \"passengerId\": 1,\n  \"pickupLat\": 11.9346,\n  \"pickupLng\": 79.8370,\n  \"pickupName\": \"Pondicherry Bus Stand\",\n  \"dropLat\": 11.9416,\n  \"dropLng\": 79.8083,\n  \"dropName\": \"White Town Beach\",\n  \"zone\": \"ZONE_A\",\n  \"vehicleType\": \"SEDAN\",\n  \"paymentAmount\": 240.50,\n  \"ratingScore\": 4.5\n}"}
+          }
+        },
+        {
+          "name": "5. Poll Live Status (every 3s)",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{passengerToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/status/{{rideId}}"}
+          }
+        },
+        {
+          "name": "6. Get Ride History",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{passengerToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/history/{{rideId}}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN MONITOR",
+      "item": [
+        {
+          "name": "7. Admin — Live Feed (all events)",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/live-feed"}
+          }
+        },
+        {
+          "name": "8. Admin — Search by Ride ID",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/search?rideId=1"}
+          }
+        },
+        {
+          "name": "9. Admin — Search by Driver ID",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/search?driverId=1"}
+          }
+        },
+        {
+          "name": "10. Admin — Search by Ride + Driver ID",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/search?rideId=1&driverId=1"}
+          }
+        },
+        {
+          "name": "11. Admin — Analytics (stage counts)",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/analytics"}
+          }
+        },
+        {
+          "name": "12. Admin — All Records",
+          "request": { "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{adminToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/pipeline/auto/all"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "DRIVER PIPELINE (auto-advance)",
+      "item": [
+        {
+          "name": "13. Driver Accept Ride (→ auto DRIVER_ASSIGNED)",
+          "request": { "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{driverToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/fare/rides/{{rideId}}/accept?driverId={{driverId}}"}
+          }
+        },
+        {
+          "name": "14. Driver Start Ride (→ auto RIDE_STARTED)",
+          "request": { "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{driverToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/fare/rides/{{rideId}}/status?status=ACTIVE"}
+          }
+        },
+        {
+          "name": "15. Driver Complete Ride (→ auto RIDE_COMPLETED + PAYMENT_DONE)",
+          "request": { "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{driverToken}}"}],
+            "url": {"raw": "http://localhost:8080/api/fare/rides/{{rideId}}/status?status=COMPLETED"}
+          }
+        }
+      ]
+    }
+  ]
+}
